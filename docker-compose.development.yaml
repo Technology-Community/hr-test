@@ -1,0 +1,82 @@
+networks:
+    network_app:
+        driver: bridge
+
+volumes:
+    postgresql_volume:
+    redis_data:
+
+services:
+    python:
+        container_name: ${APP_NAME}-python
+        hostname: ${APP_NAME}-server_python
+        restart: unless-stopped
+        build:
+            context: .
+            dockerfile: .docker/development/python/Dockerfile
+        tty: true
+        networks:
+            - network_app
+        ports:
+            - 8080:8000
+        volumes:
+            - .:/app
+        depends_on:
+            postgresql:
+                condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "curl",
+                    "--fail",
+                    "http://127.0.0.1:8000/health-check",
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+
+    postgresql:
+        container_name: ${APP_NAME}-postgresql
+        hostname: ${APP_NAME}-postgresql
+        restart: unless-stopped
+        build:
+            context: .
+            dockerfile: .docker/development/postgresql/Dockerfile
+            args:
+                - POSTGRES_USER=${POSTGRES_USER}
+                - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+                - POSTGRES_DB=${POSTGRES_DB}
+        networks:
+            - network_app
+        ports:
+            - 5442:5432
+        volumes:
+            - postgresql_volume:/var/lib/postgresql/data
+        environment:
+            - POSTGRES_USER=${POSTGRES_USER}
+            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            - POSTGRES_DB=${POSTGRES_DB}
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready", "-d", "db_prod"]
+            interval: 30s
+            timeout: 60s
+            retries: 5
+            start_period: 80s
+
+    redis:
+        container_name: ${APP_NAME}-redis
+        hostname: ${APP_NAME}-server_redis
+        restart: unless-stopped
+        build:
+            context: .docker/development/redis
+            dockerfile: Dockerfile
+        networks:
+            - network_app
+        ports:
+            - 6379:6379
+        volumes:
+            - redis_data:/data
+        healthcheck:
+            test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
