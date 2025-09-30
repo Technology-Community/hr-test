@@ -141,10 +141,10 @@ shell-python: ## Access Python REPL (in Docker)
 	@echo "$(GREEN)Accessing Python REPL...$(RESET)"
 	$(DOCKER_COMPOSE_DEV) exec python python
 
-.PHONY: shell-mongo
-shell-mongo: ## Access MongoDB shell
-	@echo "$(GREEN)Accessing MongoDB shell...$(RESET)"
-	$(DOCKER_COMPOSE_DEV) exec mongodb mongosh
+.PHONY: shell-postgres
+shell-postgres: ## Access PostgreSQL shell
+	@echo "$(GREEN)Accessing PostgreSQL shell...$(RESET)"
+	$(DOCKER_COMPOSE_DEV) exec postgresql psql -U admin -d database_develop
 
 # Logs and Monitoring
 .PHONY: logs
@@ -153,9 +153,9 @@ logs: ## Show application logs
 	$(DOCKER_COMPOSE_DEV) logs -f python
 
 .PHONY: logs-db
-logs-db: ## Show MongoDB logs
-	@echo "$(GREEN)Showing MongoDB logs...$(RESET)"
-	$(DOCKER_COMPOSE_DEV) logs -f mongodb
+logs-db: ## Show PostgreSQL logs
+	@echo "$(GREEN)Showing PostgreSQL logs...$(RESET)"
+	$(DOCKER_COMPOSE_DEV) logs -f postgresql
 
 .PHONY: logs-all
 logs-all: ## Show all services logs
@@ -169,21 +169,71 @@ status: ## Show services status
 
 # Database Management
 .PHONY: db-up
-db-up: ## Start only MongoDB
-	@echo "$(GREEN)Starting MongoDB...$(RESET)"
-	$(DOCKER_COMPOSE_DEV) up -d mongodb
+db-up: ## Start only PostgreSQL
+	@echo "$(GREEN)Starting PostgreSQL...$(RESET)"
+	$(DOCKER_COMPOSE_DEV) up -d postgresql
 
 .PHONY: db-down
-db-down: ## Stop MongoDB
-	@echo "$(YELLOW)Stopping MongoDB...$(RESET)"
-	$(DOCKER_COMPOSE_DEV) stop mongodb
+db-down: ## Stop PostgreSQL
+	@echo "$(YELLOW)Stopping PostgreSQL...$(RESET)"
+	$(DOCKER_COMPOSE_DEV) stop postgresql
 
 .PHONY: db-reset
-db-reset: ## Reset MongoDB data (WARNING: deletes all data)
-	@echo "$(RED)Resetting MongoDB data...$(RESET)"
-	$(DOCKER_COMPOSE_DEV) down mongodb
-	docker volume rm backend-fastapi-app_mongodb_data || true
-	$(DOCKER_COMPOSE_DEV) up -d mongodb
+db-reset: ## Reset PostgreSQL data (WARNING: deletes all data)
+	@echo "$(RED)Resetting PostgreSQL data...$(RESET)"
+	$(DOCKER_COMPOSE_DEV) down postgresql
+	docker volume rm hr-app-test_postgresql_volume || true
+	$(DOCKER_COMPOSE_DEV) up -d postgresql
+
+.PHONY: shell-db
+shell-db: ## Access PostgreSQL shell
+	@echo "$(GREEN)Accessing PostgreSQL shell...$(RESET)"
+	$(DOCKER_COMPOSE_DEV) exec postgresql psql -U admin -d database_develop
+
+# Database Migrations
+.PHONY: migrate-generate
+migrate-generate: ## Generate new migration (usage: make migrate-generate MESSAGE="your message")
+	@echo "$(GREEN)Generating new migration...$(RESET)"
+	$(DOCKER_COMPOSE_DEV) exec python poetry run alembic revision --autogenerate -m "$(MESSAGE)"
+
+.PHONY: migrate-up
+migrate-up: ## Apply all pending migrations
+	@echo "$(GREEN)Applying migrations...$(RESET)"
+	$(DOCKER_COMPOSE_DEV) exec python poetry run alembic upgrade head
+
+.PHONY: migrate-down
+migrate-down: ## Rollback one migration
+	@echo "$(YELLOW)Rolling back one migration...$(RESET)"
+	$(DOCKER_COMPOSE_DEV) exec python poetry run alembic downgrade -1
+
+.PHONY: migrate-history
+migrate-history: ## Show migration history
+	@echo "$(BLUE)Migration history:$(RESET)"
+	$(DOCKER_COMPOSE_DEV) exec python poetry run alembic history
+
+.PHONY: migrate-current
+migrate-current: ## Show current migration version
+	@echo "$(BLUE)Current migration:$(RESET)"
+	$(DOCKER_COMPOSE_DEV) exec python poetry run alembic current
+
+.PHONY: migrate-reset
+migrate-reset: ## Reset all migrations (WARNING: destroys all data)
+	@echo "$(RED)Resetting all migrations...$(RESET)"
+	$(DOCKER_COMPOSE_DEV) exec python poetry run alembic downgrade base
+
+# Database Seeding
+.PHONY: seed
+seed: ## Seed database with sample data
+	@echo "$(GREEN)Seeding database with sample data...$(RESET)"
+	$(DOCKER_COMPOSE_DEV) exec python python app/database/seeds/seed_runner.py seed
+
+.PHONY: seed-clear
+seed-clear: ## Clear all seeded data (WARNING: removes sample data)
+	@echo "$(YELLOW)Clearing all seeded data...$(RESET)"
+	$(DOCKER_COMPOSE_DEV) exec python python app/database/seeds/seed_runner.py clear
+
+.PHONY: reseed
+reseed: seed-clear seed ## Clear and reseed database with fresh sample data
 
 # Production Commands
 .PHONY: prod-build
@@ -252,9 +302,9 @@ health: ## Check application health
 	@curl -f http://localhost:8080/health-check || echo "$(RED)Health check failed$(RESET)"
 
 .PHONY: ping-db
-ping-db: ## Ping MongoDB
-	@echo "$(GREEN)Pinging MongoDB...$(RESET)"
-	$(DOCKER_COMPOSE_DEV) exec mongodb mongosh --eval "db.adminCommand('ping')"
+ping-db: ## Ping PostgreSQL
+	@echo "$(GREEN)Pinging PostgreSQL...$(RESET)"
+	$(DOCKER_COMPOSE_DEV) exec postgresql pg_isready -U admin -d database_develop
 
 # Utilities
 .PHONY: version

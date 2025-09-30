@@ -1,6 +1,7 @@
-from .middleware import RequestLoggingMiddleware, SecurityHeadersMiddleware
+from .middleware import RateLimitMiddleware, RequestLoggingMiddleware, SecurityHeadersMiddleware
 
 __all__ = [
+    "RateLimitMiddleware",
     "RequestLoggingMiddleware",
     "SecurityHeadersMiddleware",
 ]

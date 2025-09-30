@@ -1,7 +1,11 @@
-from .base import BaseEntity
-from .user import User
+from .base import BaseModel
+from .employee import Employee
+from .organization import Organization
+from .organization_config import OrganizationConfig
 
 __all__ = [
-    "BaseEntity",
-    "User",
+    "BaseModel",
+    "Employee",
+    "Organization",
+    "OrganizationConfig",
 ]

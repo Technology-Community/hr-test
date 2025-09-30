@@ -3,7 +3,6 @@
 from abc import ABC, abstractmethod
 
 from .base import DomainException
-from .user import UserNotFound, UserAlreadyExists
 from .validation import ValidationError, BusinessRuleViolation
 from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
@@ -27,18 +26,6 @@ class DomainExceptionHandler(BaseExceptionHandler):
         return APIResponse.from_domain_exception(exc)
 
 
-class UserNotFoundHandler(BaseExceptionHandler):
-    """Handler for UserNotFound exceptions."""
-
-    async def handle(self, request: Request, exc: UserNotFound) -> JSONResponse:
-        return APIResponse.from_domain_exception(exc)
-
-
-class UserAlreadyExistsHandler(BaseExceptionHandler):
-    """Handler for UserAlreadyExists exceptions."""
-
-    async def handle(self, request: Request, exc: UserAlreadyExists) -> JSONResponse:
-        return APIResponse.from_domain_exception(exc)
 
 
 class ValidationErrorHandler(BaseExceptionHandler):
@@ -59,16 +46,12 @@ class BusinessRuleViolationHandler(BaseExceptionHandler):
 
 # Handler instances
 domain_exception_handler = DomainExceptionHandler()
-user_not_found_handler = UserNotFoundHandler()
-user_already_exists_handler = UserAlreadyExistsHandler()
 validation_error_handler = ValidationErrorHandler()
 business_rule_violation_handler = BusinessRuleViolationHandler()
 
 
 def register_exception_handlers(app) -> None:
     """Register all exception handlers with the FastAPI app."""
-    app.add_exception_handler(UserNotFound, user_not_found_handler.handle)
-    app.add_exception_handler(UserAlreadyExists, user_already_exists_handler.handle)
     app.add_exception_handler(ValidationError, validation_error_handler.handle)
     app.add_exception_handler(
         BusinessRuleViolation, business_rule_violation_handler.handle
@@ -82,15 +65,7 @@ class HttpExceptionConverter:
     @staticmethod
     def convert(exc: DomainException) -> None:
         """Convert domain exception to HTTP exception."""
-        if isinstance(exc, UserNotFound):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=exc.message
-            )
-        elif isinstance(exc, UserAlreadyExists):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message
-            )
-        elif isinstance(exc, ValidationError):
+        if isinstance(exc, ValidationError):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message
             )

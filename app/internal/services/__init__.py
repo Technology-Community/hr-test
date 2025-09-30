@@ -1,8 +1,8 @@
 from .system import SystemService
-from .user import UserService, get_user_service
+from .employee import EmployeeService, get_employee_service
 
 __all__ = [
     "SystemService",
-    "UserService",
-    "get_user_service",
+    "EmployeeService",
+    "get_employee_service",
 ]

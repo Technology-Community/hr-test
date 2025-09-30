@@ -1,48 +1,56 @@
 from datetime import datetime, timezone
-from uuid import UUID
-
-from beanie import Document, PydanticObjectId
-from pydantic import Field
-
-
-def utc_now() -> datetime:
-    """Get current UTC datetime."""
-    return datetime.now(timezone.utc)
+from typing import Optional
+from uuid import UUID, uuid4
+from sqlmodel import SQLModel, Field
 
 
-class BaseEntity(Document):
-    id: PydanticObjectId = Field(
-        default_factory=PydanticObjectId, description="Entity ID"
+class BaseModel(SQLModel, table=False):
+    """Base model with audit trail and soft deletion for all entities."""
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        description="Unique identifier for the entity"
     )
+
+    # Audit trail fields
     created_at: datetime = Field(
-        default_factory=utc_now, description="Creation timestamp"
+        default_factory=datetime.now,
+        description="When the entity was created"
     )
-    created_by: UUID | None = Field(
-        None, description="ID of user who created this entity"
+    created_by: Optional[str] = Field(
+        default=None,
+        description="Who created the entity"
     )
-    updated_at: datetime = Field(
-        default_factory=utc_now, description="Last update timestamp"
+    updated_at: Optional[datetime] = Field(
+        default=None,
+        description="When the entity was last updated"
     )
-    updated_by: UUID | None = Field(
-        None, description="ID of user who last updated this entity"
-    )
-    deleted_at: datetime | None = Field(None, description="Soft deletion timestamp")
-    deleted_by: UUID | None = Field(
-        None, description="ID of user who deleted this entity"
+    updated_by: Optional[str] = Field(
+        default=None,
+        description="Who last updated the entity"
     )
 
-    class Settings:
-        use_state_management = True
+    # Soft deletion fields
+    deleted_at: Optional[datetime] = Field(
+        default=None,
+        description="When the entity was soft deleted"
+    )
+    deleted_by: Optional[str] = Field(
+        default=None,
+        description="Who soft deleted the entity"
+    )
 
-    @property
+    def soft_delete(self, deleted_by: Optional[str] = None) -> None:
+        """Soft delete the entity."""
+        self.deleted_at = datetime.now()
+        self.deleted_by = deleted_by
+
     def is_deleted(self) -> bool:
-        """Check if entity is soft deleted."""
+        """Check if the entity is soft deleted."""
         return self.deleted_at is not None
 
-    def soft_delete(self, deleted_by: UUID | None = None):
-        """Mark entity as soft deleted."""
-        now = utc_now()
-        self.deleted_at = now
-        self.deleted_by = deleted_by
-        self.updated_at = now
-        self.updated_by = deleted_by
+    def update_audit(self, updated_by: Optional[str] = None) -> None:
+        """Update audit fields."""
+        self.updated_at = datetime.now()
+        self.updated_by = updated_by

@@ -40,9 +40,9 @@ make test-all     # Run all tests
 make ci           # Full CI pipeline
 
 # Database Management
-make db-up        # Start only MongoDB
-make db-reset     # Reset MongoDB data (WARNING: deletes all data)
-make shell-mongo  # Access MongoDB shell
+make db-up        # Start only PostgreSQL
+make db-reset     # Reset PostgreSQL data (WARNING: deletes all data)
+make shell-db     # Access PostgreSQL shell
 
 # Utilities
 make shell        # Access Python container shell
@@ -59,15 +59,16 @@ make version      # Show application version
 
 ### Docker Services
 - `python`: FastAPI application container
-- `mongodb`: MongoDB database container
-- Both services defined in `docker-compose.development.yaml`
+- `postgresql`: PostgreSQL database container
+- `redis`: Redis cache container
+- All services defined in `docker-compose.development.yaml`
 
 ## Architecture Overview
 
 ### Clean Architecture Pattern
 This FastAPI application follows clean architecture principles with clear separation of concerns and modern design patterns:
 
-- **Models** (`app/internal/models/`): MongoDB documents using Beanie ODM, inherit from BaseEntity
+- **Models** (`app/internal/models/`): PostgreSQL tables using SQLModel, inherit from BaseModel
 - **DTOs** (`app/internal/dtos/`): Data Transfer Objects for API contracts with barrel exports
 - **Services** (`app/internal/services/`): Business logic layer with singleton pattern and dependency injection
 - **Repositories** (`app/internal/repositories/`): Data access layer with repository pattern
@@ -76,7 +77,7 @@ This FastAPI application follows clean architecture principles with clear separa
 
 ### Technology Stack
 - **Framework**: FastAPI with async support and dependency injection
-- **Database**: MongoDB with Motor (async driver) and Beanie (ODM)
+- **Database**: PostgreSQL with SQLAlchemy (async) and SQLModel (ORM)
 - **Containerization**: Docker with docker-compose for development and production
 - **Code Quality**: Ruff for formatting and linting, Pyright for type checking
 - **Testing**: pytest with pytest-asyncio and comprehensive mocking
@@ -114,35 +115,35 @@ This FastAPI application follows clean architecture principles with clear separa
 - Request logging middleware with timing and emoji indicators
 - Security headers middleware for production safety
 
-**Base Entity Pattern**: All models inherit from `BaseEntity` (Beanie Document) providing:
+**Base Model Pattern**: All models inherit from `BaseModel` (SQLModel) providing:
 - UUID-based IDs with automatic generation
 - Audit trail fields (created_by, updated_by, deleted_by)
-- Soft deletion with `deleted_at` field and `soft_delete()` method
+- Soft deletion with `deleted_at` field
 - Timezone-aware datetime using `datetime.now(timezone.utc)`
-- MongoDB indexes for performance
+- PostgreSQL indexes and constraints for performance
 
-**MongoDB Integration**:
-- Beanie ODM for async MongoDB operations
-- Motor driver for high-performance async database access
+**PostgreSQL Integration**:
+- SQLAlchemy async for high-performance database operations
+- SQLModel for type-safe ORM with Pydantic integration
 - Database lifespan management in FastAPI application
 - Connection pooling and automatic reconnection
 
 **Repository Pattern**:
-- Separate data access layer for MongoDB operations
+- Separate data access layer for PostgreSQL operations
 - Async repository methods for CRUD operations
 - Business logic separated from data access
 - Easy mocking for unit tests
 
 **Configuration Management**:
 - Pydantic Settings with environment variable support
-- MongoDB connection string configuration
+- PostgreSQL connection string configuration
 - Singleton pattern using `@lru_cache()` decorators
 - Environment-aware configuration (development/staging/production)
 - Global logging configuration with datetime formatting
 
 **Docker-First Development**:
 - All development commands run in Docker containers
-- MongoDB service integrated with docker-compose
+- PostgreSQL and Redis services integrated with docker-compose
 - Makefile provides consistent development workflow
 - No local Python environment required
 
@@ -152,7 +153,7 @@ This FastAPI application follows clean architecture principles with clear separa
 3. **Router** → Dependency Injection (`get_user_service()`)
 4. **Router** → Service (business logic, audit tracking, singleton instance)
 5. **Service** → Repository (data access layer)
-6. **Repository** → MongoDB (via Beanie ODM)
+6. **Repository** → PostgreSQL (via SQLAlchemy async)
 7. **Response** ← DTO (clean API contracts)
 
 ### Environment Configuration
@@ -162,14 +163,14 @@ The application uses environment-based configuration with `.env` file support:
 - Configurable via environment variables or `.env` file
 
 ### Database Strategy
-MongoDB with Beanie ODM:
-- Async operations with Motor driver
-- Document-based storage with flexible schema
+PostgreSQL with SQLAlchemy async:
+- Async operations with SQLAlchemy async engine
+- Relational storage with strong schema enforcement
 - Repository pattern abstracts data access
-- Models inherit from Beanie Document via BaseEntity
+- Models inherit from SQLModel via BaseModel
 - UUID-based IDs support distributed systems
 - Soft deletion preserves audit trail
-- Indexes for performance optimization
+- Indexes and constraints for performance optimization
 - Connection management with lifespan events
 
 ### Testing Structure
@@ -289,10 +290,10 @@ All API responses use consistent structure via `APIResponse` utility:
 - Delete: 204 No Content with success response format
 - Errors: Appropriate HTTP status with error response format
 
-### MongoDB Specific
-- All models inherit from Beanie's `Document` class via `BaseEntity`
+### PostgreSQL Specific
+- All models inherit from SQLModel via `BaseModel`
 - Use async/await for all database operations
-- Repository pattern isolates MongoDB operations
+- Repository pattern isolates PostgreSQL operations
 - Connection managed through FastAPI lifespan events
 
 ### Development Workflow
@@ -300,7 +301,7 @@ All API responses use consistent structure via `APIResponse` utility:
 - Use `make format`, `make lint`, and `make typecheck` before committing
 - Run `make test` to ensure all tests pass
 - Use `make ci` for full CI pipeline simulation
-- Access services via `make shell` or `make shell-mongo`
+- Access services via `make shell` or `make shell-db`
 
 ## API Endpoints
 
@@ -330,10 +331,11 @@ All API responses use consistent structure via `APIResponse` utility:
 - `DEBUG`: Debug mode flag
 - `LOG_LEVEL`: Logging level
 
-### MongoDB Settings
-- `MONGODB_URL`: MongoDB connection string
-- `MONGODB_DB_NAME`: Database name
-- `MONGODB_TEST_DB_NAME`: Test database name
+### PostgreSQL Settings
+- `DATABASE_URL`: PostgreSQL connection string
+- `POSTGRES_USER`: Database user
+- `POSTGRES_PASSWORD`: Database password
+- `POSTGRES_DB`: Database name
 
 ### Server Settings
 - `HOST`: Server host (default: 0.0.0.0)
@@ -346,7 +348,7 @@ app/
 ├── configs/          # Configuration modules
 │   ├── __init__.py  # ✨ Barrel exports for all configurations
 │   ├── app.py       # Main app configuration
-│   ├── database.py  # MongoDB configuration
+│   ├── database.py  # PostgreSQL configuration
 │   ├── logging.py   # Global logging configuration with datetime
 │   └── version.py   # Version management
 ├── dependencies/     # 🆕 Dependency injection and middleware
@@ -365,13 +367,13 @@ app/
 │   │   ├── infrastructure.py    # Infrastructure exceptions
 │   │   ├── user.py              # User domain exceptions
 │   │   └── validation.py        # Validation & business rule exceptions
-│   ├── models/          # MongoDB models (Beanie)
+│   ├── models/          # PostgreSQL models (SQLModel)
 │   │   ├── __init__.py      # ✨ Model exports with barrel pattern
-│   │   ├── base.py          # BaseEntity with audit trail and soft delete
+│   │   ├── base.py          # BaseModel with audit trail and soft delete
 │   │   └── user.py          # User model with indexes and validation
 │   ├── repositories/    # Data access layer
 │   │   ├── __init__.py      # ✨ Repository exports
-│   │   └── user.py          # User repository with async MongoDB operations
+│   │   └── user.py          # User repository with async PostgreSQL operations
 │   └── services/        # Business logic with singleton pattern
 │       ├── __init__.py      # ✨ Service exports including dependency functions
 │       ├── system.py        # System service for health checks

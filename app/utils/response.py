@@ -10,7 +10,6 @@ from fastapi import status
 from fastapi.responses import JSONResponse
 
 from app.internal.exceptions.base import DomainException
-from app.internal.exceptions.user import UserNotFound, UserAlreadyExists
 from app.internal.exceptions.validation import ValidationError, BusinessRuleViolation
 
 
@@ -86,17 +85,7 @@ class APIResponse:
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         context = None
 
-        if isinstance(exc, UserNotFound):
-            status_code = status.HTTP_404_NOT_FOUND
-            context = {
-                "user_id": exc.user_id,
-                "email": exc.email,
-                "username": exc.username,
-            }
-        elif isinstance(exc, UserAlreadyExists):
-            status_code = status.HTTP_400_BAD_REQUEST
-            context = {"field": exc.field, "value": exc.value}
-        elif isinstance(exc, ValidationError):
+        if isinstance(exc, ValidationError):
             status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
             context = {"field": exc.field, "value": exc.value}
         elif isinstance(exc, BusinessRuleViolation):

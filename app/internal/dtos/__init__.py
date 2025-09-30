@@ -10,7 +10,7 @@ from .response import (
     ValidationErrorResponse,
 )
 from .system import SystemStatusResponse, VersionInformationResponse
-from .user import UserBase, UserCreate, UserResponse, UserUpdate
+from .employee import EmployeeResponse, EmployeeSearchRequest, EmployeeSearchResponse
 
 __all__ = [
     # Pagination
@@ -27,8 +27,7 @@ __all__ = [
     # Domain DTOs
     "SystemStatusResponse",
     "VersionInformationResponse",
-    "UserBase",
-    "UserCreate",
-    "UserResponse",
-    "UserUpdate",
+    "EmployeeResponse",
+    "EmployeeSearchRequest",
+    "EmployeeSearchResponse",
 ]

@@ -7,7 +7,7 @@ from app.configs import (
     get_app_version,
     get_log_config,
 )
-from app.dependencies import RequestLoggingMiddleware, SecurityHeadersMiddleware
+from app.dependencies import RateLimitMiddleware, RequestLoggingMiddleware, SecurityHeadersMiddleware
 from app.internal.exceptions import register_exception_handlers
 from app.routers import system
 from app.routers.v1 import v1_router
@@ -28,8 +28,9 @@ app = FastAPI(
 register_exception_handlers(app)
 
 # Add middleware
-app.add_middleware(RequestLoggingMiddleware)
-app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware)
+# app.add_middleware(RequestLoggingMiddleware)
+# app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(system.router)
 app.include_router(v1_router)

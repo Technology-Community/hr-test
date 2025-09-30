@@ -7,8 +7,6 @@ from .handlers import (
     BusinessRuleViolationHandler,
     DomainExceptionHandler,
     HttpExceptionConverter,
-    UserAlreadyExistsHandler,
-    UserNotFoundHandler,
     ValidationErrorHandler,
     register_exception_handlers,
 )
@@ -26,15 +24,6 @@ from .infrastructure import (
     FileSystemException,
 )
 
-# User exceptions
-from .user import (
-    UserAccountLocked,
-    UserAlreadyExists,
-    UserException,
-    UserInactive,
-    UserNotFound,
-    UserPermissionDenied,
-)
 
 # Validation exceptions
 from .validation import (
@@ -54,8 +43,6 @@ __all__ = [
     # Handlers
     "BaseExceptionHandler",
     "DomainExceptionHandler",
-    "UserNotFoundHandler",
-    "UserAlreadyExistsHandler",
     "ValidationErrorHandler",
     "BusinessRuleViolationHandler",
     "HttpExceptionConverter",
@@ -70,13 +57,6 @@ __all__ = [
     "FileSystemException",
     "FileNotFoundError",
     "FilePermissionError",
-    # User
-    "UserException",
-    "UserNotFound",
-    "UserAlreadyExists",
-    "UserInactive",
-    "UserPermissionDenied",
-    "UserAccountLocked",
     # Validation
     "ValidationException",
     "ValidationError",

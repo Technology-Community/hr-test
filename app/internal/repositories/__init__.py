@@ -1,5 +1,5 @@
-from .user import UserRepository
+from .employee import EmployeeRepository
 
 __all__ = [
-    "UserRepository",
+    "EmployeeRepository",
 ]

@@ -1,33 +1,40 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-import motor.motor_asyncio
-from beanie import init_beanie
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlmodel import SQLModel
 
 from app.configs.app import get_app_config
-from app.internal.models.user import User
 
 
 class DatabaseManager:
     def __init__(self):
-        self.client: motor.motor_asyncio.AsyncIOMotorClient | None = None
-        self.database = None
+        self.engine = None
+        self.session_maker = None
 
     async def connect(self):
-        """Initialize MongoDB connection and Beanie ODM."""
+        """Initialize PostgreSQL connection and SQLModel."""
         config = get_app_config()
 
-        # Create MongoDB client
-        self.client = motor.motor_asyncio.AsyncIOMotorClient(config.mongodb_url)
-        self.database = self.client[config.mongodb_database]
+        # Create async engine for PostgreSQL
+        self.engine = create_async_engine(
+            config.database_url,
+            echo=config.debug,  # Log SQL queries in debug mode
+            pool_pre_ping=True,
+            pool_recycle=3600,
+        )
 
-        # Initialize Beanie with document models
-        await init_beanie(database=self.database, document_models=[User])
+        # Create session maker
+        self.session_maker = async_sessionmaker(
+            self.engine,
+            class_=AsyncSession,
+            expire_on_commit=False
+        )
 
     async def close(self):
-        """Close MongoDB connection."""
-        if self.client:
-            self.client.close()
+        """Close PostgreSQL connection."""
+        if self.engine:
+            await self.engine.dispose()
 
 
 # Global database manager instance
@@ -35,8 +42,12 @@ db_manager = DatabaseManager()
 
 
 async def get_database():
-    """Get database instance (for dependency injection)."""
-    return db_manager.database
+    """Get database session (for dependency injection)."""
+    async with db_manager.session_maker() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
 
 
 @asynccontextmanager
